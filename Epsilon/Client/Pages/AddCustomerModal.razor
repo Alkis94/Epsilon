@@ -1,0 +1,93 @@
+﻿@using Epsilon.Shared.Models
+@using Epsilon.Shared.Services
+@inject HttpClient Http
+
+<EditForm Model="@customer" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label for="CompanyName">Company Name:</label>
+        <InputText id="CompanyName" @bind-Value="customer.CompanyName" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label for="ContactName">Contact Name:</label>
+        <InputText id="ContactName" @bind-Value="customer.ContactName" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label for="Address">Address:</label>
+        <InputText id="Address" @bind-Value="customer.Address" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label for="City">City:</label>
+        <InputText id="City" @bind-Value="customer.City" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label for="Region">Region:</label>
+        <InputText id="Region" @bind-Value="customer.Region" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label for="PostalCode">Postal Code:</label>
+        <InputText id="PostalCode" @bind-Value="customer.PostalCode" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label for="Country">Country:</label>
+        <InputText id="Country" @bind-Value="customer.Country" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label for="Phone">Phone:</label>
+        <InputText id="Phone" @bind-Value="customer.Phone" class="form-control" />
+    </div>
+
+    @if(!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <label for="error">Error: @errorMessage</label>
+    }
+
+    <br />
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+
+@code {
+    [Parameter] public CustomerDto customer { get; set; }
+
+    [Parameter] public Modal modal { get; set; }
+
+    private string errorMessage = "";
+
+    private async Task HandleValidSubmit()
+    {
+
+        var validationResult = ValidationService.IsValidCustomer(customer);
+        if (validationResult.IsValid)
+        {
+            var result = await Http.PostAsJsonAsync<CustomerDto>($"api/Customer", customer);
+
+            if (result.IsSuccessStatusCode)
+            {
+                errorMessage = "";
+                await modal.HideAsync();
+            }
+            else
+            {
+                errorMessage = "Something went wrong with the server!";
+            }
+        }
+        else
+        {
+            errorMessage = validationResult.ErrorMessage;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+}

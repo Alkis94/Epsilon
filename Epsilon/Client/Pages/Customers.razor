@@ -1,0 +1,160 @@
+﻿@page "/customers"
+@using Epsilon.Shared.Models
+@using IdentityModel.Client
+@inject HttpClient Http
+
+<PageTitle>Customers</PageTitle> 
+
+<h1>Customers</h1> 
+
+@if (customers == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Contact Name</th>
+                <th>Company Name</th>
+                <th>Address</th>
+                <th>City</th>
+                <th>Region</th>
+                <th>Postal Code</th>
+                <th>Country</th>
+                <th>Phone</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var customer in customers)
+            {
+                <tr>
+                    <td>@customer.ContactName</td>
+                    <td>@customer.CompanyName</td>
+                    <td>@customer.Address</td>
+                    <td>@customer.City</td>
+                    <td>@customer.Region</td>
+                    <td>@customer.PostalCode</td>
+                    <td>@customer.Country</td>
+                    <td>@customer.Phone</td>
+                    <td>
+                        <button @onclick="@(e => Edit(customer))">Edit</button>
+                        <button @onclick="@(e => Delete(customer.Id))">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div>
+
+        @if (currentPage > 1)
+        {
+            <input type="button" class="btn-lg btn" id="prev" @onclick="PrevPage" value="Previous" />
+        }
+        
+        @for (int i = currentPage-2; i <= currentPage + 2; i++)
+        {
+            int j = i;
+            @if(i > 0)
+            {
+                if(i == currentPage)
+                {
+                    <span class="px-2" style="font-weight:bold;cursor:pointer" @onclick="() => ShowPage(j)">@i</span>
+                }
+                else
+                {
+                    if ((i - 1) * pageSize < totalData)
+                    {
+                        <span class="px-2" style="cursor:pointer" @onclick="() => ShowPage(j)">@i</span>
+                    }
+                    
+                }
+            }
+        }
+
+        @if (currentPage * pageSize < totalData)
+        {
+            <input type="button" class="btn-lg btn" id="next" @onclick="NextPage" value="Next" />
+        }
+
+        
+    </div>
+}
+
+<br />
+
+<button class="btn btn-primary" @onclick="@(e => Add())">Add Customer</button>
+
+<Modal @ref="modal" OnHidden="GetData"/>
+
+@code {
+    private IEnumerable<CustomerDto> customers;
+    private int currentPage = 1;
+    private readonly int pageSize = 10;
+    private int totalData = 0;
+    private Modal modal = default!;
+    [Inject] ToastService ToastService { get; set; } = default!;
+
+    protected async Task NextPage()
+    {
+        currentPage++;
+        await GetData();
+    }
+
+    protected async Task ShowPage(int i)
+    {
+        currentPage = i;
+        await GetData();
+    }
+
+    protected async Task PrevPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await GetData();
+        }
+    }
+
+    protected async Task GetData()
+    {
+        var result = await Http.GetAsync($"api/Customer/GetPaged?pageIndex={currentPage}");
+
+        if (result.IsSuccessStatusCode)
+        {
+            var data = await result.Content.ReadFromJsonAsync<PaginatedResultDto<CustomerDto>>();
+            customers = data.Data;
+            totalData = data.Total;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetData();
+    }
+
+    private async Task Add()
+    {
+        var parameters = new Dictionary<string, object>();
+        parameters.Add("customer", new CustomerDto());
+        parameters.Add("modal", modal);
+        await modal.ShowAsync<AddCustomerModal>(title: "Add Customer", parameters: parameters);
+    }
+
+    private async Task Edit(CustomerDto customer)
+    {
+        var parameters = new Dictionary<string, object>();
+        parameters.Add("customer", customer);
+        parameters.Add("modal", modal);
+        await modal.ShowAsync<AddCustomerModal>(title: "Edit Customer", parameters: parameters);
+    }
+
+    private async Task Delete(Guid id)
+    {
+        await Http.DeleteAsync($"api/Customer/{id}");
+        await GetData();
+    }
+}

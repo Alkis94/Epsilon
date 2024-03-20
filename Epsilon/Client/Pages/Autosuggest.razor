@@ -1,0 +1,88 @@
+﻿@using System.Text.Json
+@using Epsilon.Shared.Models
+@inject HttpClient Http
+@page "/autosuggest"
+
+<h3>Bing Maps Autosuggest</h3>
+
+<div class="input-group mb-3">
+    <input type="text" class="form-control" @bind="searchText" placeholder="Enter search text...">
+    <div class="input-group-append">
+        <button class="btn btn-primary" type="button" @onclick="Suggest">Suggest</button>
+    </div>
+</div>
+
+
+@if (bingResults?.Count() > 0)
+{
+    <div>
+        <h4>Search Results</h4>
+        
+        <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Country Region</th>
+                <th>Locality</th>
+                <th>Postal Code</th>
+                <th>Address Line</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var result in bingResults)
+            {
+                <tr>
+                    <td>@result.Name</td>
+                    <td>@result.__Type</td>
+                    <td>@result.Address?.CountryRegion</td>
+                    <td>@result.Address?.Locality</td>
+                    <td>@result.Address?.PostalCode</td>
+                    <td>@result.Address?.AddressLine</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    </div>
+}
+
+@code {
+    private string searchText = string.Empty;
+    private List<BingResult> bingResults = new List<BingResult>();
+
+    private async Task Suggest()
+    {
+        bingResults.Clear();
+        var response = await Http.GetStringAsync($"https://dev.virtualearth.net/REST/v1/Autosuggest?query={searchText}&userLocation=47.668697,-122.376373,5&key=AphFY6S7o7e_37CLnLBixYUzEMPxPV3PpmLAYkymrQMe8Dt5HDbnN4dqIngq_1yC");
+
+        if (response != null)
+        {
+            var root = JsonSerializer.Deserialize<RootObject>(response, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+            if (root?.ResourceSets?.Count() > 0)
+            {
+                foreach (var resourceSet in root.ResourceSets)
+                {
+                    if (resourceSet.Resources?.Count() > 0)
+                    {
+                        foreach (var resource in resourceSet.Resources)
+                        {
+                            if (resource.Value != null)
+                            {
+                                bingResults.AddRange(resource.Value);
+                            }
+                        }
+                    }
+                }
+            }            
+        }
+    }
+
+
+    
+
+
+}
